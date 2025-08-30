@@ -5,6 +5,8 @@ const Listing = require("./models/listing.js");
 const path = require("path");
 const methodOverride = require('method-override');
 const engine = require("ejs-mate");
+// const multer = require("multer");
+// const upload = multer({ dest: "uploads/" });
 
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust";
 app.set("view engine", "ejs");
@@ -65,11 +67,17 @@ app.get("/listings/:id", async (req, res) => {
     res.render("listings/show.ejs", { listing });
 });
 
-//Create Route
+// Create Route
 app.post("/listings", async (req, res) => {
-    let allListings = new Listing(req.body.listing);
-    await allListings.save();
-    res.redirect("/listings")
+    try {
+        let allListings = new Listing(req.body.listing);
+        await allListings.save();
+        res.redirect("/listings");
+    } catch(e) {
+        console.log("Validation Error:", err.message);
+        res.status(400).send("Validation Failed: " + err.message);
+    }
+    
 });
 
 //Edit Route
@@ -82,14 +90,15 @@ app.get("/listings/:id/edit", async (req, res) => {
 //Update Route
 app.put("/listings/:id", async (req, res) => {
     let { id } = req.params;
-    const edit = await Listing.findByIdAndUpdate(id, {...req.body.listing});
+    const edit = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
     // console.log(edit);
     res.redirect(`/listings/${id}`);
 });
 
+
 //Delet Route
 app.delete("/listings/:id", async (req, res) => {
-    let {id} = req.params;
+    let { id } = req.params;
     let deletedListing = await Listing.findByIdAndDelete(id);
     console.log(deletedListing);
     res.redirect("/listings");
