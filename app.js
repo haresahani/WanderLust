@@ -6,7 +6,8 @@ const path = require("path");
 const methodOverride = require('method-override');
 const engine = require("ejs-mate");
 const wrapAsync = require("./utils/wrapAsync.js");
-const ExpressError = require('./utils/ExpressError.js');
+const ExpressError = require("./utils/ExpressError.js");
+const { listingSchema } = require("./schema.js");
 
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust";
 app.set("view engine", "ejs");
@@ -33,18 +34,30 @@ app.get("/", (req, res) => {
     res.send("Hi, I'm root")
 });
 
-// app.get("/testlisting", async (req, res) => {
-//     let sampleListing = new Listing({
-//         title: "Sample Listing",
-//         description: "Hey there, Please visit our place",
-//         price: 8000,
-//         location: "Mohali",
-//         Country: "India"
-//     })
-//     await sampleListing.save();
-//     console.log(sampleListing);
-//     res.send("successfully listed");
-// })
+// const validateListing = (req, res, next) => {
+//     let {error} = listingSchema.validate(req.body);
+//     if(error) {
+//         let errMsg = error.details.map((el) => el.message).join(",");
+//         throw new ExpressError(400, errMsg);
+//     } else {
+//         next();
+//     }
+// };
+const validateListing = (req, res, next) => {
+    console.log('req.body:', req.body); // Debug log
+    if (!req.body || Object.keys(req.body).length === 0) {
+        return next(new ExpressError(400, 'Request body is missing'));
+    }
+    if (!req.body.listing) {
+        return next(new ExpressError(400, '"listing" object is required'));
+    }
+    const { error } = listingSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        const errMsg = error.details.map((el) => el.message).join(", ");
+        return next(new ExpressError(400, errMsg));
+    }
+    next();
+};
 
 
 //Index Route
@@ -68,14 +81,15 @@ app.get("/listings/:id", wrapAsync(async (req, res) => {
 }));
 
 // Create Route
-app.post("/listings", wrapAsync(async (req, res, next) => {
-    if(!req.body.listing) {
-        throw new ExpressError(400, "Send valid date for listing");
+app.post("/listings", validateListing, wrapAsync(async (req, res, next) => {
+    if (!req.body.listing) {
+        return next(new ExpressError(400, '"listing" object is missing'));
     }
-    let allListings = new Listing(req.body.listing);
-    await allListings.save();
+    const newListing = new Listing(req.body.listing);
+    await newListing.save();
     res.redirect("/listings");
 }));
+
 
 //Edit Route
 app.get("/listings/:id/edit", wrapAsync(async (req, res) => {
@@ -86,13 +100,9 @@ app.get("/listings/:id/edit", wrapAsync(async (req, res) => {
 }));
 
 //Update Route
-app.put("/listings/:id", wrapAsync(async (req, res) => {
-    if(!req.body.listing) {
-        throw new ExpressError(400, "Send valid date for listing");
-    }
+app.put("/listings/:id", validateListing, wrapAsync(async (req, res) => {
     let { id } = req.params;
-    const edit = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
-    // console.log(edit);
+    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
     res.redirect(`/listings/${id}`);
 }));
 
@@ -113,9 +123,10 @@ app.use((req, res, next) => {
 // });
 
 app.use((err, req, res, next) => {
-    let {statusCode= 500, message = "Something went wrong"} = err;
-    res.status(statusCode).send(message);
-})
+    console.error('Error details:', err);  // Log full error for debugging
+    let { statusCode = 500, message = "Something went wrong" } = err;
+    res.status(statusCode).render("error.ejs", { message, statusCode });
+});
 
 app.listen(8080, (req, res) => {
     console.log("app is running to port 8080")
