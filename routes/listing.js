@@ -35,11 +35,14 @@ router.get("/new", (req, res) => {
     res.render("listings/new.ejs");
 });
 
-//Show Route
+// Show Route
 router.get("/:id", wrapAsync(async (req, res) => {
     let { id } = req.params;
     let listing = await Listing.findById(id).populate("reviews");
-    // console.log(listing);
+    if (!listing) {
+        req.flash("error", "Oops! That listing doesn’t exist anymore.");
+        return res.redirect("/listings");
+    }
     res.render("listings/show.ejs", { listing });
 }));
 
@@ -47,31 +50,43 @@ router.get("/:id", wrapAsync(async (req, res) => {
 router.post("/", validateListing, wrapAsync(async (req, res, next) => {
     const newListing = new Listing(req.body.listing);
     await newListing.save();
+    req.flash("success", "New listing created successfully");
     res.redirect("/listings");
 }));
 
 
-//Edit Route
+// Edit Route
 router.get("/:id/edit", wrapAsync(async (req, res) => {
     let { id } = req.params;
     let listing = await Listing.findById(id);
-    console.log("Edit Route listing:", listing);
+    if (!listing) {
+        req.flash("error", "Oops! That listing doesn’t exist anymore.");
+        return res.redirect("/listings");
+    }
     res.render("listings/edit.ejs", { listing });
 }));
 
-//Update Route
+// Update Route
 router.put("/:id", validateListing, wrapAsync(async (req, res) => {
     let { id } = req.params;
-    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+    let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+    if (!listing) {
+        req.flash("error", "Oops! That listing doesn’t exist anymore.");
+        return res.redirect("/listings");
+    }
+    req.flash("success", "Listing updated successfully!");
     res.redirect(`/listings/${id}`);
 }));
 
-//Delet Route
+// Delete Route
 router.delete("/:id", wrapAsync(async (req, res) => {
     let { id } = req.params;
     let deletedListing = await Listing.findByIdAndDelete(id);
-    console.log(deletedListing);
+    if (!deletedListing) {
+        req.flash("error", "Oops! That listing doesn’t exist anymore.");
+        return res.redirect("/listings");
+    }
+    req.flash("success", "Listing deleted successfully!");
     res.redirect("/listings");
 }));
-
 module.exports = router;

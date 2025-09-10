@@ -72,11 +72,61 @@
 //     console.log(i, fruites[i]);
 // }
 
-let fruites = [["apple", "banana", "orange", "pineapple", "litchi"], ["apple", "banana", "orange", "pineapple", "litchi"]];
+// let fruites = [["apple", "banana", "orange", "pineapple", "litchi"], ["apple", "banana", "orange", "pineapple", "litchi"]];
 
-for(let fruite of fruites) {
-    console.log(fruite)
-    for(let name of fruite) {
-        console.log(name);
-    }
+// for(let fruite of fruites) {
+//     console.log(fruite)
+//     for(let name of fruite) {
+//         console.log(name);
+//     }
+// }
+
+const express = require('express');
+const app = express();
+const session = require('express-session');
+const flash = require('connect-flash');
+const path = require("path");
+const { error } = require('console');
+
+const sessionOption = {
+    secret : "helloworld",
+    resave : false,
+    saveUninitialized : true,
 }
+
+app.use(session(sessionOption));
+app.use(flash());
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+app.get("/register", (req, res) => {
+    let {name = "anonymous"} = req.query;
+    req.session.name = name;
+    if(name === "anonymous") {
+        req.flash("error", "user not registered");
+    } else {
+    req.flash("success", "user register successfully");
+    }
+    res.redirect("/hello");
+})
+
+app.use((req, res, next) => {
+    res.locals.successMsg = req.flash("success");
+    res.locals.errorMsg = req.flash("error");
+    next();
+})
+app.get("/hello", (req, res) => {
+    res.render("home.ejs", {name:req.session.name});
+})
+
+// app.get("/cookies", (req, res) => {
+//     if(req.session.count) {
+//         req.session.count++;
+//     } else {
+//     req.session.count = 1;
+//     }
+//     res.send(`you sent the request ${req.session.count} times`)
+// })
+app.listen(8080, (req, res) => {
+    console.log("app is running...");
+});
