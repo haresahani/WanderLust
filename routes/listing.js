@@ -2,96 +2,28 @@ const express = require("express");
 const router = express.Router();
 const Listing = require("../models/listing.js");
 const wrapAsync = require("../utils/wrapAsync.js");
-const ExpressError = require("../utils/ExpressError.js");
-const { listingSchema} = require("../schema.js");
 const Review = require('../models/review.js');
-const { isLoggedIn, isOwner } = require("../middleware.js");
-
-//Validate Joi for Listings
-const validateListing = (req, res, next) => {
-    console.log('req.body:', req.body); // Debug log
-    if (!req.body || Object.keys(req.body).length === 0) {
-        return next(new ExpressError(400, 'Request body is missing'));
-    }
-    if (!req.body.listing) {
-        return next(new ExpressError(400, '"listing" object is required'));
-    }
-    const { error } = listingSchema.validate(req.body, { abortEarly: false });
-    if (error) {
-        const errMsg = error.details.map((el) => el.message).join(", ");
-        return next(new ExpressError(400, errMsg));
-    }
-    next();
-};
+const { isLoggedIn, isOwner, validateListing } = require("../middleware.js");
+const listingController = require("../controllers/listings.js");
 
 //Index Route
-router.get("/", wrapAsync(async (req, res) => {
-    let allListings = await Listing.find({});
-    // console.log(allListings);
-    res.render("listings/index.ejs", { allListings });
-}));
+router.get("/", wrapAsync(listingController.index));
 
 //New Route
-router.get("/new", isLoggedIn, (req, res) => {
-    res.render("listings/new.ejs");
-});
+router.get("/new", isLoggedIn, listingController.renderNewForm);
 
 // Show Route
-router.get("/:id", isLoggedIn, wrapAsync(async (req, res) => {
-    let { id } = req.params;
-    let listing = await Listing.findById(id).populate("reviews").populate("owner");
-    if (!listing) {
-        req.flash("error", "Oops! That listing doesn’t exist anymore.");
-        return res.redirect("/listings");
-    }
-    console.log(listing)
-    res.render("listings/show.ejs", { listing });
-}));
+router.get("/:id", isLoggedIn, wrapAsync(listingController.showListing));
 
 // Create Route
-router.post("/", isLoggedIn, validateListing, wrapAsync(async (req, res) => {
-    const newListing = new Listing(req.body.listing);
-    newListing.owner = req.user._id;  // 👈 attach logged-in user
-    await newListing.save();
-
-    req.flash("success", "Your listing was created successfully!");
-    res.redirect(`/listings/${newListing._id}`);
-}));
-
-
+router.post("/", isLoggedIn, validateListing, wrapAsync(listingController.createListing));
 
 // Edit Route
-router.get("/:id/edit", isLoggedIn, wrapAsync(async (req, res) => {
-    let { id } = req.params;
-    let listing = await Listing.findById(id);
-    if (!listing) {
-        req.flash("error", "Oops! That listing doesn’t exist anymore.");
-        return res.redirect("/listings");
-    }
-    res.render("listings/edit.ejs", { listing });
-}));
+router.get("/:id/edit", isLoggedIn, wrapAsync(listingController.renderEditForm));
 
 // Update Route
-router.put("/:id", isLoggedIn, isOwner, validateListing, wrapAsync(async (req, res) => {
-    let { id } = req.params;
-    let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
-    if (!listing) {
-        req.flash("error", "Oops! That listing doesn’t exist anymore.");
-        return res.redirect("/listings");
-    }
-    req.flash("success", "Listing updated successfully!");
-    res.redirect(`/listings/${id}`);
-}));
+router.put("/:id", isLoggedIn, isOwner, validateListing, wrapAsync(listingController.updateListing));
 
 // Delete Route
-router.delete("/:id", isLoggedIn, isOwner, wrapAsync(async (req, res) => {
-    let { id } = req.params;
-    let deletedListing = await Listing.findByIdAndDelete(id);
-    if (!deletedListing) {
-        req.flash("error", "Oops! That listing doesn’t exist anymore.");
-        return res.redirect("/listings");
-    }
-    req.flash("success", "Listing deleted successfully!");
-    res.redirect("/listings");
-}));
+router.delete("/:id", isLoggedIn, isOwner, wrapAsync(listingController.destroy));
 module.exports = router;
