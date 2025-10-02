@@ -7,13 +7,14 @@ const { saveRedirectUrl } = require("../middleware.js");
 
 const userController = require("../controllers/users.js");
 
-router.get("/signup", userController.renderSignupForm);
 
-router.post("/signup", wrapAsync(userController.singup));
+router.route("/signup")
+.get(userController.renderSignupForm)
+.post(wrapAsync(userController.singup));
 
-router.get("/login", userController.renderLoginForm);
-
-router.post("/login",
+router.route("/login")
+.get(userController.renderLoginForm)
+.post(
     saveRedirectUrl,
     passport.authenticate("local", {  // checks the username/password against MongoDB.
         failureRedirect: "/login",
