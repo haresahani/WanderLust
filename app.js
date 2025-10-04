@@ -94,7 +94,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+// Routes 
 // app.get("/", (req, res) => res.render("home.ejs"));
 
 app.use("/listings", listingRouter);

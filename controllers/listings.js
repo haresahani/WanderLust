@@ -125,3 +125,4 @@ module.exports.destroy = async (req, res) => {
         res.redirect("/listings");
     }
 };
+ 
