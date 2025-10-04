@@ -52,7 +52,9 @@ app.use(methodOverride("_method"));
 // Session store
 const store = MongoStore.create({
   mongoUrl: dbURL,
-  crypto: { secret: "mysecret" },
+  crypto: {
+    secret: process.env.SECRET, 
+  },
   touchAfter: 24 * 3600, // Update session only once per 24 hours
 });
 
@@ -64,7 +66,7 @@ store.on("error", (e) => {
 const sessionOption = {
   store,
   name: "session",
-  secret: "mysecret",
+  secret: process.env.SECRET,
   resave: false,
   saveUninitialized: true,
   cookie: {
@@ -92,8 +94,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
-app.get("/", (req, res) => res.render("home.ejs"));
+// Routes 
+// app.get("/", (req, res) => res.render("home.ejs"));
 
 app.use("/listings", listingRouter);
 app.use("/listings/:id/reviews", reviewRouter);
