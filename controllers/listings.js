@@ -29,8 +29,12 @@ module.exports.showListing = async (req, res) => {
 }
 
 module.exports.createListing = async (req, res) => {
+    let filename = req.file.filename;
+    let url = req.file.path;
+    
     const newListing = new Listing(req.body.listing);
     newListing.owner = req.user._id;
+    newListing.image = { url, filename };
     await newListing.save();
 
     req.flash("success", "Your listing was created successfully!");
@@ -44,15 +48,21 @@ module.exports.renderEditForm = async (req, res) => {
         req.flash("error", "Oops! That listing doesn’t exist anymore.");
         return res.redirect("/listings");
     }
-    res.render("listings/edit.ejs", { listing });
+
+    let originalImageUrl = listing.image.url;
+    originalImageUrl = originalImageUrl.replace("/upload", "/upload/,w_250");
+    res.render("listings/edit.ejs", { listing, originalImageUrl });
 }
 
 module.exports.updateListing = async (req, res) => {
     let { id } = req.params;
     let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
-    if (!listing) {
-        req.flash("error", "Oops! That listing doesn’t exist anymore.");
-        return res.redirect("/listings");
+    
+    if(typeof req.file !== "undefined") {
+        let filename = req.file.filename;
+        let url = req.file.path;
+        listing.image = {url, filename};
+        await listing.save();
     }
     req.flash("success", "Listing updated successfully!");
     res.redirect(`/listings/${id}`);
